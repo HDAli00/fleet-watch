@@ -1,4 +1,5 @@
 """GET /panels endpoints."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -25,7 +26,9 @@ async def list_panels(
 
 
 @router.get("/{panel_id}", response_model=PanelRead)
-async def get_panel(panel_id: str, db: AsyncSession = Depends(get_db)) -> Panel:  # noqa: B008
+async def get_panel(
+    panel_id: str, db: AsyncSession = Depends(get_db)  # noqa: B008
+) -> Panel:
     """Return a single panel by ID."""
     panel = await db.get(Panel, panel_id)
     if panel is None:

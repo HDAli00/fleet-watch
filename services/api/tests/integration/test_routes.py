@@ -1,4 +1,5 @@
 """Integration tests: FastAPI routes against real Postgres via testcontainers."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -13,6 +14,7 @@ from app.models.telemetry import Telemetry
 from app.models.weather import WeatherObs
 
 # ── Seed helpers ─────────────────────────────────────────────────────────────
+
 
 async def _seed_site(db: AsyncSession) -> Site:
     site = Site(
@@ -59,6 +61,7 @@ async def _seed_telemetry(db: AsyncSession, panel_id: str, site_id: str) -> Tele
 
 # ── Tests ────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_health(api_client: AsyncClient) -> None:
     resp = await api_client.get("/health")
@@ -99,9 +102,7 @@ async def test_list_and_get_site(
 
 
 @pytest.mark.asyncio
-async def test_list_panels(
-    api_client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_list_panels(api_client: AsyncClient, db_session: AsyncSession) -> None:
     await _seed_panel(db_session, "site-NL-001")
     await db_session.commit()
 

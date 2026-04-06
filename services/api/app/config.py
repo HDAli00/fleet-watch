@@ -1,4 +1,5 @@
 """Application settings — pydantic-settings, reads from env."""
+
 from __future__ import annotations
 
 from enum import StrEnum

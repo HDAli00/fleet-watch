@@ -1,4 +1,5 @@
 """KNMI client tests — respx HTTP mock at boundary only."""
+
 from __future__ import annotations
 
 import httpx

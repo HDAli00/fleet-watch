@@ -1,4 +1,5 @@
 """Integration tests for Lambda handler using real Postgres and moto."""
+
 from __future__ import annotations
 
 import base64
@@ -35,9 +36,7 @@ def _make_kinesis_event(records: list[dict[str, Any]]) -> dict[str, Any]:
         "Records": [
             {
                 "kinesis": {
-                    "data": base64.b64encode(
-                        json.dumps(r).encode()
-                    ).decode(),
+                    "data": base64.b64encode(json.dumps(r).encode()).decode(),
                     "sequenceNumber": f"seq-{i}",
                     "partitionKey": r["panel_id"],
                     "approximateArrivalTimestamp": 1000.0,
@@ -64,14 +63,18 @@ def test_handler_processes_valid_record(pg_dsn: str) -> None:
     event = _make_kinesis_event([SAMPLE_READING])
 
     with (
-        patch.dict(os.environ, {
-            "DB_SECRET_ARN": "test-db-secret",
-            "RAW_BUCKET_NAME": "",
-            "AWS_DEFAULT_REGION": "eu-west-1",
-        }),
+        patch.dict(
+            os.environ,
+            {
+                "DB_SECRET_ARN": "test-db-secret",
+                "RAW_BUCKET_NAME": "",
+                "AWS_DEFAULT_REGION": "eu-west-1",
+            },
+        ),
         patch("src.db._get_connection_string", return_value=pg_dsn),
     ):
         from src.handler import handler
+
         result = handler(event, object())
 
     assert result["processed"] == 1
@@ -93,14 +96,18 @@ def test_handler_sets_anomaly_flag(pg_dsn: str) -> None:
     event = _make_kinesis_event([ANOMALY_READING])
 
     with (
-        patch.dict(os.environ, {
-            "DB_SECRET_ARN": "test-db-secret",
-            "RAW_BUCKET_NAME": "",
-            "AWS_DEFAULT_REGION": "eu-west-1",
-        }),
+        patch.dict(
+            os.environ,
+            {
+                "DB_SECRET_ARN": "test-db-secret",
+                "RAW_BUCKET_NAME": "",
+                "AWS_DEFAULT_REGION": "eu-west-1",
+            },
+        ),
         patch("src.db._get_connection_string", return_value=pg_dsn),
     ):
         from src.handler import handler
+
         result = handler(event, object())
 
     assert result["processed"] == 1
@@ -122,14 +129,18 @@ def test_handler_skips_invalid_record(pg_dsn: str) -> None:
     event = _make_kinesis_event([bad_record, SAMPLE_READING])
 
     with (
-        patch.dict(os.environ, {
-            "DB_SECRET_ARN": "test-db-secret",
-            "RAW_BUCKET_NAME": "",
-            "AWS_DEFAULT_REGION": "eu-west-1",
-        }),
+        patch.dict(
+            os.environ,
+            {
+                "DB_SECRET_ARN": "test-db-secret",
+                "RAW_BUCKET_NAME": "",
+                "AWS_DEFAULT_REGION": "eu-west-1",
+            },
+        ),
         patch("src.db._get_connection_string", return_value=pg_dsn),
     ):
         from src.handler import handler
+
         result = handler(event, object())
 
     assert result["failed"] == 1

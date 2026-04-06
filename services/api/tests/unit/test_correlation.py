@@ -1,4 +1,5 @@
 """Unit tests for Pearson R² — no I/O, full branch coverage."""
+
 from __future__ import annotations
 
 import pytest
@@ -54,6 +55,7 @@ class TestPearsonR2:
     def test_r2_bounded_0_to_1(self) -> None:
         """R² must always be in [0, 1]."""
         import random
+
         rng = random.Random(42)  # noqa: S311
         for _ in range(20):
             n = rng.randint(2, 50)
@@ -65,7 +67,18 @@ class TestPearsonR2:
 
     def test_solar_irradiance_scenario(self) -> None:
         """Realistic irradiance (W/m²) vs AC power (W) — should be high R²."""
-        irradiance = [0.0, 100.0, 300.0, 600.0, 900.0, 1000.0, 850.0, 500.0, 200.0, 50.0]  # noqa: E501
+        irradiance = [
+            0.0,
+            100.0,
+            300.0,
+            600.0,
+            900.0,
+            1000.0,
+            850.0,
+            500.0,
+            200.0,
+            50.0,
+        ]  # noqa: E501
         ac_power = [0.0, 44.0, 132.0, 264.0, 396.0, 440.0, 374.0, 220.0, 88.0, 22.0]
         r2 = pearson_r2(irradiance, ac_power)
         assert r2 > 0.99, f"Expected high R² for linear solar data, got {r2}"

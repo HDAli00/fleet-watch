@@ -1,4 +1,5 @@
 """Pure anomaly detection function — mirrors Lambda transform logic."""
+
 from __future__ import annotations
 
 ANOMALY_THRESHOLD: float = 0.60  # strict <: 60.0% is NOT anomalous; 59.9% IS

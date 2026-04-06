@@ -1,4 +1,5 @@
 """Pydantic v2 models for KNMI weather observations."""
+
 from __future__ import annotations
 
 from datetime import datetime

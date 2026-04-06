@@ -4,6 +4,7 @@ Dispatches on STREAM_TYPE env var:
   "panels"  → validate PanelReading → transform → DB upsert → S3 archive
   "weather" → validate WeatherReading → DB upsert
 """
+
 from __future__ import annotations
 
 import base64

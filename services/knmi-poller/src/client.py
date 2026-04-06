@@ -1,4 +1,5 @@
 """KNMI Open Data API client — HTTPS only, typed responses."""
+
 from __future__ import annotations
 
 import os

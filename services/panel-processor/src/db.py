@@ -2,6 +2,7 @@
 
 Lightweight: no ORM — direct SQL for hot-path Lambda performance.
 """
+
 from __future__ import annotations
 
 import json

@@ -1,4 +1,5 @@
 """SQLModel Panel: table + read variants."""
+
 from __future__ import annotations
 
 from datetime import date

@@ -1,4 +1,5 @@
 """Pure correlation function: Pearson R² for irradiance vs output."""
+
 from __future__ import annotations
 
 import math

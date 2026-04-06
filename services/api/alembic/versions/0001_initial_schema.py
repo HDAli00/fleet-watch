@@ -5,6 +5,7 @@ Revises:
 Create Date: 2026-04-05 00:00:00.000000
 
 """
+
 import sqlalchemy as sa
 
 from alembic import op
@@ -27,8 +28,12 @@ def upgrade() -> None:
         sa.Column("knmi_station", sa.Text, nullable=False),
         sa.Column("panel_count", sa.Integer, nullable=False),
         sa.Column("capacity_kwp", sa.Float, nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.func.now()),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+        ),
     )
 
     # ── panels ───────────────────────────────────────────────────────────────
@@ -36,8 +41,11 @@ def upgrade() -> None:
         "panels",
         sa.Column("panel_id", sa.Text, primary_key=True),
         sa.Column(
-            "site_id", sa.Text,
-            sa.ForeignKey("sites.site_id"), nullable=False, index=True,
+            "site_id",
+            sa.Text,
+            sa.ForeignKey("sites.site_id"),
+            nullable=False,
+            index=True,
         ),
         sa.Column("model", sa.Text, nullable=True),
         sa.Column("rated_power_w", sa.Float, nullable=False),

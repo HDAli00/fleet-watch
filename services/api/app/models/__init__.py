@@ -1,4 +1,5 @@
 """SQLModel table models — import all to register SA metadata."""
+
 from app.models.panel import Panel, PanelRead
 from app.models.site import Site, SiteCreate, SiteRead
 from app.models.telemetry import Telemetry, TelemetryRead

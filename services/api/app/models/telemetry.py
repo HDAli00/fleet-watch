@@ -1,4 +1,5 @@
 """SQLModel Telemetry: partitioned time-series table + read variant."""
+
 from __future__ import annotations
 
 from datetime import datetime

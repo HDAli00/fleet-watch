@@ -1,4 +1,5 @@
 """Lambda handler: EventBridge → KNMI API → Kinesis weather-stream."""
+
 from __future__ import annotations
 
 import os

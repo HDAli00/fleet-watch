@@ -1,4 +1,5 @@
 """Parser tests — real fixture files, no mocks, 100% branch coverage."""
+
 from __future__ import annotations
 
 import json

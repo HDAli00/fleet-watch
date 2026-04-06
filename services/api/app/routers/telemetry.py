@@ -1,4 +1,5 @@
 """GET /telemetry endpoints — time-series panel readings."""
+
 from __future__ import annotations
 
 import asyncio

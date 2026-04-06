@@ -1,4 +1,5 @@
 """Shared fixtures: testcontainers Postgres + moto AWS mocks."""
+
 from __future__ import annotations
 
 import json
@@ -92,22 +93,29 @@ def secrets_client(  # type: ignore[type-arg]
         # Parse DSN to construct secret JSON
         # postgresql://user:pass@host:port/dbname
         import re
+
         match = re.match(r"postgresql://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)", pg_dsn)
         if match:
             user, password, host, port, dbname = match.groups()
         else:
             user, password, host, port, dbname = (
-                "test", "test", "localhost", "5432", "test"
+                "test",
+                "test",
+                "localhost",
+                "5432",
+                "test",
             )
 
         client.create_secret(
             Name="test-db-secret",
-            SecretString=json.dumps({
-                "username": user,
-                "password": password,
-                "host": host,
-                "port": int(port),
-                "dbname": dbname,
-            }),
+            SecretString=json.dumps(
+                {
+                    "username": user,
+                    "password": password,
+                    "host": host,
+                    "port": int(port),
+                    "dbname": dbname,
+                }
+            ),
         )
         yield client

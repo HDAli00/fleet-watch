@@ -1,4 +1,5 @@
 """Publisher tests — moto Kinesis."""
+
 from __future__ import annotations
 
 import json
@@ -35,7 +36,10 @@ def test_publish_readings_success(kinesis_client: object) -> None:
     """Published record count matches input."""
     with patch.dict(
         os.environ,
-        {"WEATHER_STREAM_NAME": "solar-weather-stream", "AWS_DEFAULT_REGION": "eu-west-1"},  # noqa: E501
+        {
+            "WEATHER_STREAM_NAME": "solar-weather-stream",
+            "AWS_DEFAULT_REGION": "eu-west-1",
+        },  # noqa: E501
     ):
         published = publish_readings(
             SAMPLE_READINGS, stream_name="solar-weather-stream"
@@ -51,9 +55,13 @@ def test_publish_empty_list(kinesis_client: object) -> None:
 def test_published_records_have_correct_partition_key(kinesis_client: object) -> None:
     """Partition key must equal station_code (string)."""
     import boto3
+
     with patch.dict(
         os.environ,
-        {"WEATHER_STREAM_NAME": "solar-weather-stream", "AWS_DEFAULT_REGION": "eu-west-1"},  # noqa: E501
+        {
+            "WEATHER_STREAM_NAME": "solar-weather-stream",
+            "AWS_DEFAULT_REGION": "eu-west-1",
+        },  # noqa: E501
     ):
         publish_readings(SAMPLE_READINGS, stream_name="solar-weather-stream")
 

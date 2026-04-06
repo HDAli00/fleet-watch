@@ -1,4 +1,5 @@
 """Shared pytest fixtures: testcontainers Postgres + FastAPI async test client."""
+
 from __future__ import annotations
 
 import asyncio
@@ -53,6 +54,7 @@ async def db_session(db_engine: Any) -> AsyncGenerator[AsyncSession, None]:
 @pytest_asyncio.fixture
 async def api_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Async test client with DB session override."""
+
     async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
         yield db_session
 

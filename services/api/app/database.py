@@ -1,4 +1,5 @@
 """Async database engine and session dependency."""
+
 from __future__ import annotations
 
 import json

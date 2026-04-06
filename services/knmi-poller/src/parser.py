@@ -3,6 +3,7 @@
 Only extracts stations we care about (defined in KNMI_STATIONS).
 100% branch coverage required — all KNMI field types parsed.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime

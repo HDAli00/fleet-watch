@@ -2,6 +2,7 @@
 
 No I/O — all functions are deterministic and fully testable in isolation.
 """
+
 from __future__ import annotations
 
 from .models import PanelReading, ProcessedReading

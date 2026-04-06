@@ -1,4 +1,5 @@
 """Pydantic v2 models for panel telemetry processing."""
+
 from __future__ import annotations
 
 from datetime import datetime

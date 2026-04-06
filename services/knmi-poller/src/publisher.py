@@ -1,4 +1,5 @@
 """Publish WeatherReading records to Kinesis weather-stream."""
+
 from __future__ import annotations
 
 import json

@@ -1,4 +1,5 @@
 """Unit tests for pure transform functions — no mocks, no I/O."""
+
 from __future__ import annotations
 
 from datetime import UTC
@@ -117,8 +118,8 @@ class TestIsAnomaly:
         ("ac_power", "expected_power", "should_flag"),
         [
             # Below 60% threshold — anomaly
-            (200.0, 400.0, True),   # 50% → anomaly
-            (239.9, 400.0, True),   # 59.975% → anomaly
+            (200.0, 400.0, True),  # 50% → anomaly
+            (239.9, 400.0, True),  # 59.975% → anomaly
             # Exactly at boundary — NOT anomaly (strict <, not <=)
             (240.0, 400.0, False),  # exactly 60% → not anomaly
             # Above threshold — not anomaly

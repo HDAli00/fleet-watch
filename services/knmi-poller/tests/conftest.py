@@ -1,4 +1,5 @@
 """Shared fixtures: moto Kinesis + Secrets Manager."""
+
 from __future__ import annotations
 
 from collections.abc import Generator
