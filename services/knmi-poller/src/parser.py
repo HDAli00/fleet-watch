@@ -5,7 +5,7 @@ Only extracts stations we care about (defined in KNMI_STATIONS).
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
 from pydantic import ValidationError
@@ -19,7 +19,7 @@ def _parse_ts(ts_str: str) -> datetime:
     """Parse ISO8601 timestamp and ensure timezone-aware."""
     dt = datetime.fromisoformat(ts_str)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt
 
 

@@ -17,6 +17,8 @@ import { Construct } from "constructs";
 
 export interface ComputeStackProps extends cdk.StackProps {
   readonly vpc: ec2.Vpc;
+  /** Pre-created in NetworkStack to avoid a cross-stack dependency cycle. */
+  readonly lambdaSg: ec2.SecurityGroup;
   readonly panelsStream: kinesis.Stream;
   readonly weatherStream: kinesis.Stream;
   readonly rdsCluster: rds.DatabaseCluster;
@@ -33,36 +35,20 @@ export class ComputeStack extends cdk.Stack {
     cdk.Tags.of(this).add("Stack", id);
     cdk.Tags.of(this).add("Project", "SolarEdgeNL");
 
-    // ── KNMI API secret (must exist in Secrets Manager before deploy) ────────
+    // ecsSg is created here (not in NetworkStack) to prevent a
+    // NetworkStack → ComputeStack DependencyCycle. ApplicationLoadBalancedFargateService
+    // auto-adds its ALB SG as an ingress peer to ecsSg at synth time; if ecsSg
+    // lived in NetworkStack that would create a reverse cross-stack reference.
+    const ecsSg = new ec2.SecurityGroup(this, "EcsSg", {
+      vpc: props.vpc,
+      description: "ECS Fargate tasks",
+      allowAllOutbound: true,
+    });
+
     const knmiSecret = secretsmanager.Secret.fromSecretNameV2(
       this,
       "KnmiApiKey",
       "iot-platform/knmi-api-key"
-    );
-
-    // ── Security Groups ──────────────────────────────────────────────────────
-    const lambdaSg = new ec2.SecurityGroup(this, "LambdaSg", {
-      vpc: props.vpc,
-      description: "Lambda functions security group",
-      allowAllOutbound: true,
-    });
-
-    const ecsSg = new ec2.SecurityGroup(this, "EcsSg", {
-      vpc: props.vpc,
-      description: "ECS Fargate tasks security group",
-      allowAllOutbound: true,
-    });
-
-    // Allow Lambda and ECS to connect to RDS on 5432
-    props.rdsCluster.connections.allowFrom(
-      lambdaSg,
-      ec2.Port.tcp(5432),
-      "Lambda → RDS"
-    );
-    props.rdsCluster.connections.allowFrom(
-      ecsSg,
-      ec2.Port.tcp(5432),
-      "ECS → RDS"
     );
 
     // ── Lambda: KNMI Poller ──────────────────────────────────────────────────
@@ -77,7 +63,7 @@ export class ComputeStack extends cdk.Stack {
       memorySize: 256,
       vpc: props.vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
-      securityGroups: [lambdaSg],
+      securityGroups: [props.lambdaSg],
       environment: {
         WEATHER_STREAM_NAME: props.weatherStream.streamName,
         KNMI_SECRET_ARN: knmiSecret.secretArn,
@@ -87,18 +73,15 @@ export class ComputeStack extends cdk.Stack {
       tracing: lambda.Tracing.ACTIVE,
     });
 
-    // Least-privilege: only Kinesis PutRecords on weather-stream
     props.weatherStream.grantWrite(knmiPollerFn);
-    // Only GetSecretValue on KNMI secret
     knmiSecret.grantRead(knmiPollerFn);
 
-    // EventBridge Scheduler: every 10 minutes
     new events.Rule(this, "KnmiSchedule", {
       schedule: events.Schedule.rate(cdk.Duration.minutes(10)),
       targets: [new events_targets.LambdaFunction(knmiPollerFn)],
     });
 
-    // ── Lambda: Panel Processor (Kinesis consumer) ───────────────────────────
+    // ── Lambda: Panel Processor (Kinesis consumer, STREAM_TYPE=panels) ───────
     const panelProcessorFn = new lambda.Function(this, "PanelProcessor", {
       functionName: "solar-panel-processor",
       runtime: lambda.Runtime.PYTHON_3_12,
@@ -110,7 +93,7 @@ export class ComputeStack extends cdk.Stack {
       memorySize: 512,
       vpc: props.vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
-      securityGroups: [lambdaSg],
+      securityGroups: [props.lambdaSg],
       environment: {
         RAW_BUCKET_NAME: props.rawBucket.bucketName,
         DB_SECRET_ARN: props.rdsSecret.secretArn,
@@ -129,7 +112,7 @@ export class ComputeStack extends cdk.Stack {
       })
     );
 
-    // ── Lambda: Weather Processor (Kinesis consumer) ─────────────────────────
+    // ── Lambda: Weather Processor (Kinesis consumer, STREAM_TYPE=weather) ────
     const weatherProcessorFn = new lambda.Function(this, "WeatherProcessor", {
       functionName: "solar-weather-processor",
       runtime: lambda.Runtime.PYTHON_3_12,
@@ -141,7 +124,7 @@ export class ComputeStack extends cdk.Stack {
       memorySize: 256,
       vpc: props.vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
-      securityGroups: [lambdaSg],
+      securityGroups: [props.lambdaSg],
       environment: {
         RAW_BUCKET_NAME: props.rawBucket.bucketName,
         DB_SECRET_ARN: props.rdsSecret.secretArn,
@@ -160,10 +143,8 @@ export class ComputeStack extends cdk.Stack {
       })
     );
 
-    // Least-privilege for both processors
     for (const fn of [panelProcessorFn, weatherProcessorFn]) {
       props.rdsSecret.grantRead(fn);
-      // Scoped S3 PutObject — raw prefix only
       fn.addToRolePolicy(
         new iam.PolicyStatement({
           actions: ["s3:PutObject"],
@@ -199,7 +180,7 @@ export class ComputeStack extends cdk.Stack {
     // ── ECS Fargate: FastAPI ─────────────────────────────────────────────────
     const cluster = new ecs.Cluster(this, "Cluster", {
       vpc: props.vpc,
-      containerInsights: true,
+      containerInsightsV2: ecs.ContainerInsights.ENABLED,
     });
 
     const fargateService =
@@ -230,26 +211,23 @@ export class ComputeStack extends cdk.Stack {
         }
       );
 
-    // ALB: public subnet, HTTPS 443 from 0.0.0.0/0 (managed by pattern)
-    // ECS SG: allow ALB SG on 8000 only
+    // Allow the ALB to reach the container port on the ECS SG.
+    // Using a CIDR-based rule (VPC CIDR) rather than an SG reference to avoid
+    // a cross-stack cycle between NetworkStack endpoints and this stack's ALB SG.
     fargateService.service.connections.allowFrom(
-      fargateService.loadBalancer,
+      ec2.Peer.ipv4(props.vpc.vpcCidrBlock),
       ec2.Port.tcp(8000),
-      "ALB → ECS on 8000"
+      "ALB → ECS on 8000 (via VPC CIDR)"
     );
 
     props.rdsSecret.grantRead(fargateService.taskDefinition.taskRole);
 
-    // API Gateway HTTP API → ALB
-    // Note: Full VpcLink integration requires HttpAlbIntegration from aws-apigatewayv2-integrations
-    // The ALB URL is surfaced as output; API GW wiring done in app.ts after full install
     this.apiUrl = `http://${fargateService.loadBalancer.loadBalancerDnsName}`;
 
     new cdk.CfnOutput(this, "ApiUrl", {
       value: this.apiUrl,
       exportName: `${this.stackName}-ApiUrl`,
     });
-
     new cdk.CfnOutput(this, "AlbDnsName", {
       value: fargateService.loadBalancer.loadBalancerDnsName,
       exportName: `${this.stackName}-AlbDnsName`,

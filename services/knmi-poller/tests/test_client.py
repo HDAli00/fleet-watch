@@ -1,13 +1,9 @@
 """KNMI client tests — respx HTTP mock at boundary only."""
 from __future__ import annotations
 
-import json
-import os
-from unittest.mock import patch
-
+import httpx
 import pytest
 import respx
-import httpx
 
 from src.client import fetch_latest_observations
 

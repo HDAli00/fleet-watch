@@ -5,8 +5,9 @@ Revises:
 Create Date: 2026-04-05 00:00:00.000000
 
 """
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision = "0001"
 down_revision = None
@@ -34,7 +35,10 @@ def upgrade() -> None:
     op.create_table(
         "panels",
         sa.Column("panel_id", sa.Text, primary_key=True),
-        sa.Column("site_id", sa.Text, sa.ForeignKey("sites.site_id"), nullable=False, index=True),
+        sa.Column(
+            "site_id", sa.Text,
+            sa.ForeignKey("sites.site_id"), nullable=False, index=True,
+        ),
         sa.Column("model", sa.Text, nullable=True),
         sa.Column("rated_power_w", sa.Float, nullable=False),
         sa.Column("area_m2", sa.Float, nullable=False),
@@ -65,8 +69,13 @@ def upgrade() -> None:
         CREATE TABLE IF NOT EXISTS telemetry_default
         PARTITION OF telemetry DEFAULT
     """)
-    op.execute("CREATE INDEX IF NOT EXISTS ix_telemetry_panel_ts ON telemetry (panel_id, ts)")
-    op.execute("CREATE INDEX IF NOT EXISTS ix_telemetry_anomaly ON telemetry (anomaly_flag) WHERE anomaly_flag = TRUE")
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS ix_telemetry_panel_ts ON telemetry (panel_id, ts)"
+    )
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS ix_telemetry_anomaly ON telemetry (anomaly_flag)"
+        " WHERE anomaly_flag = TRUE"
+    )
 
     # ── weather_obs ──────────────────────────────────────────────────────────
     op.create_table(

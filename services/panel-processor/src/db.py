@@ -46,7 +46,8 @@ def get_panel_specs_batch(
         return {}
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT panel_id, rated_power_w, area_m2 FROM panels WHERE panel_id = ANY(%s)",
+            "SELECT panel_id, rated_power_w, area_m2"
+            " FROM panels WHERE panel_id = ANY(%s)",
             (panel_ids,),
         )
         rows = cur.fetchall()

@@ -7,7 +7,7 @@ from app.services.anomaly import ANOMALY_THRESHOLD, is_anomaly
 
 
 @pytest.mark.parametrize(
-    "ac_power, expected_power, should_flag",
+    ("ac_power", "expected_power", "should_flag"),
     [
         (200.0, 400.0, True),    # 50% → anomaly
         (239.9, 400.0, True),    # 59.975% → anomaly (strict <)

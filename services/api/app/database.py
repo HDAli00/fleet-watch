@@ -8,7 +8,6 @@ from collections.abc import AsyncGenerator
 import boto3
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlmodel import SQLModel
 
 log = structlog.get_logger()
 
@@ -27,7 +26,9 @@ def _get_db_url() -> str:
     if not secret_arn:
         raise RuntimeError("DB_SECRET_ARN environment variable is required")
 
-    client = boto3.client("secretsmanager", region_name=os.environ.get("AWS_REGION_NAME", "eu-west-1"))
+    client = boto3.client(
+        "secretsmanager", region_name=os.environ.get("AWS_REGION_NAME", "eu-west-1")
+    )
     response = client.get_secret_value(SecretId=secret_arn)
     secret = json.loads(response["SecretString"])
 

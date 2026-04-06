@@ -5,13 +5,13 @@ import asyncio
 import os
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlalchemy.pool import NullPool
 from sqlmodel import SQLModel
 
 # Load all models so metadata is populated
 import app.models  # noqa: F401
+from alembic import context
 
 config = context.config
 if config.config_file_name is not None:

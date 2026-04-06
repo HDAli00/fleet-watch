@@ -14,7 +14,7 @@ router = APIRouter(prefix="/panels", tags=["panels"])
 @router.get("", response_model=list[PanelRead])
 async def list_panels(
     site_id: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> list[Panel]:
     """Return all panels, optionally filtered by site_id."""
     query = select(Panel)
@@ -25,7 +25,7 @@ async def list_panels(
 
 
 @router.get("/{panel_id}", response_model=PanelRead)
-async def get_panel(panel_id: str, db: AsyncSession = Depends(get_db)) -> Panel:
+async def get_panel(panel_id: str, db: AsyncSession = Depends(get_db)) -> Panel:  # noqa: B008
     """Return a single panel by ID."""
     panel = await db.get(Panel, panel_id)
     if panel is None:

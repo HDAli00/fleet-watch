@@ -21,7 +21,7 @@ def pearson_r2(xs: list[float], ys: list[float]) -> float:
     mean_x = sum(xs) / n
     mean_y = sum(ys) / n
 
-    cov = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys))
+    cov = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys, strict=False))
     var_x = sum((x - mean_x) ** 2 for x in xs)
     var_y = sum((y - mean_y) ** 2 for y in ys)
 

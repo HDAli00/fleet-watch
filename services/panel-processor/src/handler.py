@@ -17,7 +17,12 @@ from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.utilities.data_classes import KinesisStreamEvent
 from pydantic import ValidationError
 
-from .db import get_panel_specs_batch, open_connection, upsert_telemetry, upsert_weather_obs
+from .db import (
+    get_panel_specs_batch,
+    open_connection,
+    upsert_telemetry,
+    upsert_weather_obs,
+)
 from .models import PanelReading, WeatherReading
 from .transform import process_reading
 
@@ -54,7 +59,7 @@ def _process_panels_batch(
     specs_map = get_panel_specs_batch(conn, panel_ids)
 
     processed = failed = 0
-    for payload, raw_data in records:
+    for payload, _ in records:
         try:
             reading = PanelReading.model_validate(payload)
             specs = specs_map.get(reading.panel_id)
@@ -65,7 +70,9 @@ def _process_panels_batch(
             rated_power_w, area_m2 = specs
             processed_reading = process_reading(reading, area_m2, rated_power_w)
             upsert_telemetry(conn, processed_reading)
-            _archive_to_s3(payload, f"panels/{reading.panel_id}", str(reading.timestamp))
+            _archive_to_s3(
+                payload, f"panels/{reading.panel_id}", str(reading.timestamp)
+            )
             log.info(
                 "panel.processed",
                 panel_id=reading.panel_id,
@@ -123,5 +130,7 @@ def handler(event: dict[str, Any], context: object) -> dict[str, int]:
     finally:
         conn.close()
 
-    log.info("batch.complete", processed=processed, failed=failed, stream_type=STREAM_TYPE)
+    log.info(
+        "batch.complete", processed=processed, failed=failed, stream_type=STREAM_TYPE
+    )
     return {"processed": processed, "failed": failed}

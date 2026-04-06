@@ -1,7 +1,7 @@
 """Integration tests: FastAPI routes against real Postgres via testcontainers."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
@@ -11,7 +11,6 @@ from app.models.panel import Panel
 from app.models.site import Site
 from app.models.telemetry import Telemetry
 from app.models.weather import WeatherObs
-
 
 # ── Seed helpers ─────────────────────────────────────────────────────────────
 
@@ -47,7 +46,7 @@ async def _seed_telemetry(db: AsyncSession, panel_id: str, site_id: str) -> Tele
     t = Telemetry(
         panel_id=panel_id,
         site_id=site_id,
-        ts=datetime.now(tz=timezone.utc),
+        ts=datetime.now(tz=UTC),
         ac_power_w=312.5,
         irradiance_wm2=680.0,
         anomaly_flag=False,
@@ -159,7 +158,7 @@ async def test_recent_anomalies(
     anomaly = Telemetry(
         panel_id="panel-NL-001",
         site_id="site-NL-001",
-        ts=datetime.now(tz=timezone.utc),
+        ts=datetime.now(tz=UTC),
         ac_power_w=50.0,
         irradiance_wm2=680.0,
         anomaly_flag=True,
@@ -180,7 +179,7 @@ async def test_weather_endpoint(
 ) -> None:
     obs = WeatherObs(
         station_code="240",
-        ts=datetime.now(tz=timezone.utc),
+        ts=datetime.now(tz=UTC),
         temperature_c=14.2,
         solar_rad_wm2=420.0,
         wind_speed_ms=3.5,

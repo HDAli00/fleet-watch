@@ -12,14 +12,14 @@ router = APIRouter(prefix="/sites", tags=["sites"])
 
 
 @router.get("", response_model=list[SiteRead])
-async def list_sites(db: AsyncSession = Depends(get_db)) -> list[Site]:
+async def list_sites(db: AsyncSession = Depends(get_db)) -> list[Site]:  # noqa: B008
     """Return all registered solar sites."""
     result = await db.execute(select(Site).order_by(Site.name))
     return list(result.scalars().all())
 
 
 @router.get("/{site_id}", response_model=SiteRead)
-async def get_site(site_id: str, db: AsyncSession = Depends(get_db)) -> Site:
+async def get_site(site_id: str, db: AsyncSession = Depends(get_db)) -> Site:  # noqa: B008
     """Return a single site by ID."""
     site = await db.get(Site, site_id)
     if site is None:

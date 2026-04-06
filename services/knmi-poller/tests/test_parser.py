@@ -13,7 +13,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 
 @pytest.mark.parametrize(
-    "fixture_file, expected_station, expected_temp_range",
+    ("fixture_file", "expected_station", "expected_temp_range"),
     [
         ("knmi_de_bilt.json", "260", (-5.0, 35.0)),
         ("knmi_rotterdam.json", "344", (-5.0, 35.0)),
@@ -37,7 +37,8 @@ def test_parse_known_stations(
     assert isinstance(station_reading.station_code, str)
     assert station_reading.station_code == expected_station
 
-    assert expected_temp_range[0] <= station_reading.temperature_c <= expected_temp_range[1]
+    lo, hi = expected_temp_range
+    assert lo <= station_reading.temperature_c <= hi
     assert station_reading.solar_rad_wm2 >= 0
     assert 0 <= station_reading.cloud_cover_oktas <= 8
     assert station_reading.wind_speed_ms >= 0

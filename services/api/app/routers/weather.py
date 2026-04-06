@@ -1,7 +1,7 @@
 """GET /weather endpoints — KNMI observations."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
@@ -18,10 +18,10 @@ router = APIRouter(prefix="/weather", tags=["weather"])
 async def get_station_weather(
     station_code: str,  # always string — "344" not 344
     hours: Annotated[int, Query(ge=1, le=168)] = 24,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> list[WeatherObs]:
     """Return weather observations for a KNMI station over the last N hours."""
-    since = datetime.now(tz=timezone.utc) - timedelta(hours=hours)
+    since = datetime.now(tz=UTC) - timedelta(hours=hours)
     result = await db.execute(
         select(WeatherObs)
         .where(WeatherObs.station_code == station_code, WeatherObs.ts >= since)

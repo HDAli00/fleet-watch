@@ -9,25 +9,29 @@ import { ObservabilityStack } from "../lib/observability-stack";
 
 const app = new cdk.App();
 
-// ❌ Never hardcode account IDs or region strings here — use environment variables
 const env: cdk.Environment = {
   account: process.env.CDK_DEFAULT_ACCOUNT,
   region: process.env.CDK_DEFAULT_REGION ?? "eu-west-1",
 };
 
-// Stack dependency order: Network → Data → Compute → Frontend + Observability
-// Rule: stacks only receive what they need — never the whole stack as a prop
+// Stack dependency order:
+//   Network → Data → Compute → Frontend + Observability
+//
+// Security groups are created in NetworkStack so DataStack can add RDS
+// ingress rules without creating a cycle with ComputeStack.
 
 const network = new NetworkStack(app, "IoT-NetworkStack", { env });
 
 const data = new DataStack(app, "IoT-DataStack", {
   env,
   vpc: network.vpc,
+  lambdaSg: network.lambdaSg,
 });
 
 const compute = new ComputeStack(app, "IoT-ComputeStack", {
   env,
   vpc: network.vpc,
+  lambdaSg: network.lambdaSg,
   panelsStream: data.kinesisStreamPanels,
   weatherStream: data.kinesisStreamWeather,
   rdsCluster: data.rdsCluster,

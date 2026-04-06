@@ -48,7 +48,9 @@ def _make_kinesis_event(records: list[dict[str, Any]]) -> dict[str, Any]:
                 "invokeIdentityArn": "arn:aws:iam::123:role/test",
                 "eventVersion": "1.0",
                 "eventName": "aws:kinesis:record",
-                "eventSourceARN": "arn:aws:kinesis:eu-west-1:123:stream/solar-panels-stream",
+                "eventSourceARN": (
+                    "arn:aws:kinesis:eu-west-1:123:stream/solar-panels-stream"
+                ),
                 "awsRegion": "eu-west-1",
             }
             for i, r in enumerate(records)
@@ -105,7 +107,8 @@ def test_handler_sets_anomaly_flag(pg_dsn: str) -> None:
 
     with psycopg.connect(pg_dsn) as conn:
         row = conn.execute(
-            "SELECT anomaly_flag FROM telemetry WHERE panel_id = %s AND ac_power_w < 200",
+            "SELECT anomaly_flag FROM telemetry"
+            " WHERE panel_id = %s AND ac_power_w < 200",
             ("panel-NL-001",),
         ).fetchone()
     assert row is not None

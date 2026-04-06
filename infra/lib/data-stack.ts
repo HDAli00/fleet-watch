@@ -7,6 +7,7 @@ import { Construct } from "constructs";
 
 export interface DataStackProps extends cdk.StackProps {
   readonly vpc: ec2.Vpc;
+  readonly lambdaSg: ec2.SecurityGroup;
 }
 
 export class DataStack extends cdk.Stack {
@@ -22,8 +23,7 @@ export class DataStack extends cdk.Stack {
     cdk.Tags.of(this).add("Stack", id);
     cdk.Tags.of(this).add("Project", "SolarEdgeNL");
 
-    // ── Kinesis Streams ──────────────────────────────────────────────────────
-    // panels-stream: 2 shards — 30 panels × 1/min trivial; 2 for redundancy
+    // panels-stream: 2 shards — 30 panels × 1/min; 2 for redundancy
     this.kinesisStreamPanels = new kinesis.Stream(this, "PanelsStream", {
       streamName: "solar-panels-stream",
       shardCount: 2,
@@ -39,22 +39,32 @@ export class DataStack extends cdk.Stack {
       encryption: kinesis.StreamEncryption.MANAGED,
     });
 
-    // ── RDS Aurora PostgreSQL Serverless v2 ──────────────────────────────────
-    // Isolated subnet — no internet route; SG will be locked to ECS SG on 5432
-    const dbSecurityGroup = new ec2.SecurityGroup(this, "RdsSecurityGroup", {
+    // RDS security group — ingress from lambdaSg and ecsSg (both from NetworkStack,
+    // so no cross-stack cycle is introduced here).
+    const dbSg = new ec2.SecurityGroup(this, "RdsSecurityGroup", {
       vpc: props.vpc,
-      description: "Allow ECS tasks to connect to RDS on port 5432",
+      description: "RDS Aurora — allow Lambda and ECS on 5432",
       allowAllOutbound: false,
     });
+    dbSg.addIngressRule(props.lambdaSg, ec2.Port.tcp(5432), "Lambda → RDS");
+    // ECS → RDS: use VPC CIDR rather than an SG reference. ecsSg lives in
+    // ComputeStack; referencing it here would create a DataStack → ComputeStack
+    // cycle (ComputeStack already depends on DataStack). CIDR scope is safe
+    // because RDS is in an isolated subnet reachable only from within the VPC.
+    dbSg.addIngressRule(
+      ec2.Peer.ipv4(props.vpc.vpcCidrBlock),
+      ec2.Port.tcp(5432),
+      "ECS tasks (VPC CIDR) → RDS"
+    );
 
     this.rdsCluster = new rds.DatabaseCluster(this, "RdsCluster", {
       engine: rds.DatabaseClusterEngine.auroraPostgres({
         version: rds.AuroraPostgresEngineVersion.VER_15_4,
       }),
-      serverlessV2MinCapacity: 0.5, // scales to zero when idle
-      serverlessV2MaxCapacity: 4, // caps cost in dev
+      serverlessV2MinCapacity: 0.5,
+      serverlessV2MaxCapacity: 4,
       writer: rds.ClusterInstance.serverlessV2("writer"),
-      readers: [], // no reader in dev
+      readers: [],
       vpc: props.vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       defaultDatabaseName: "solar",
@@ -62,19 +72,18 @@ export class DataStack extends cdk.Stack {
       storageEncrypted: true,
       deletionProtection: false, // dev only — set true in prod
       removalPolicy: cdk.RemovalPolicy.DESTROY, // dev — flagged
-      securityGroups: [dbSecurityGroup],
+      securityGroups: [dbSg],
     });
 
     this.rdsSecret = this.rdsCluster.secret!;
 
-    // ── S3 Raw Archive Bucket ────────────────────────────────────────────────
     this.rawBucket = new s3.Bucket(this, "RawBucket", {
       bucketName: `solar-raw-archive-${this.account}-${this.region}`,
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL, // security: no public access
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       versioned: true,
       encryption: s3.BucketEncryption.S3_MANAGED,
       removalPolicy: cdk.RemovalPolicy.DESTROY, // dev — flagged
-      autoDeleteObjects: true, // dev only
+      autoDeleteObjects: true,
       lifecycleRules: [
         {
           id: "archive-to-glacier",
@@ -88,7 +97,6 @@ export class DataStack extends cdk.Stack {
       ],
     });
 
-    // ── Outputs ──────────────────────────────────────────────────────────────
     new cdk.CfnOutput(this, "PanelsStreamName", {
       value: this.kinesisStreamPanels.streamName,
       exportName: `${this.stackName}-PanelsStreamName`,

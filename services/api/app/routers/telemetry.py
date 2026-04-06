@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -38,10 +38,10 @@ class CorrelationResult(BaseModel):
 async def get_panel_telemetry(
     panel_id: str,
     window: Annotated[TelemetryWindow, Query()] = TelemetryWindow.ONE_HOUR,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> list[Telemetry]:
     """Return time-series readings for a panel over the specified window."""
-    since = datetime.now(tz=timezone.utc) - _WINDOW_DELTAS[window]
+    since = datetime.now(tz=UTC) - _WINDOW_DELTAS[window]
     result = await db.execute(
         select(Telemetry)
         .where(Telemetry.panel_id == panel_id, Telemetry.ts >= since)
@@ -60,10 +60,10 @@ async def get_panel_telemetry(
 async def get_recent_anomalies(
     window: Annotated[TelemetryWindow, Query()] = TelemetryWindow.ONE_HOUR,
     limit: Annotated[int, Query(ge=1, le=1000)] = 100,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> list[Telemetry]:
     """Return recent anomalous panel readings across all panels."""
-    since = datetime.now(tz=timezone.utc) - _WINDOW_DELTAS[window]
+    since = datetime.now(tz=UTC) - _WINDOW_DELTAS[window]
     result = await db.execute(
         select(Telemetry)
         .where(Telemetry.anomaly_flag.is_(True), Telemetry.ts >= since)  # type: ignore[union-attr]
@@ -77,10 +77,10 @@ async def get_recent_anomalies(
 async def get_irradiance_correlation(
     site_id: str,
     window: Annotated[TelemetryWindow, Query()] = TelemetryWindow.ONE_DAY,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> CorrelationResult:
     """Return Pearson R² between irradiance (KNMI) and AC output for a site."""
-    since = datetime.now(tz=timezone.utc) - _WINDOW_DELTAS[window]
+    since = datetime.now(tz=UTC) - _WINDOW_DELTAS[window]
 
     tel_result, obs_result = await asyncio.gather(
         db.execute(

@@ -24,7 +24,9 @@ def _reading_to_record(reading: WeatherReading) -> dict[str, Any]:
     }
 
 
-def publish_readings(readings: list[WeatherReading], stream_name: str | None = None) -> int:
+def publish_readings(
+    readings: list[WeatherReading], stream_name: str | None = None
+) -> int:
     """Publish readings to Kinesis in batches of up to 500.
 
     Returns the number of successfully published records.
@@ -46,7 +48,9 @@ def publish_readings(readings: list[WeatherReading], stream_name: str | None = N
         published += batch_published
 
         if failed:
-            log.warning("kinesis.put.partial_failure", failed=failed, batch_size=len(batch))
+            log.warning(
+                "kinesis.put.partial_failure", failed=failed, batch_size=len(batch)
+            )
         else:
             log.info("kinesis.put.success", count=batch_published, stream=target_stream)
 

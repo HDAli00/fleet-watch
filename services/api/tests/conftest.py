@@ -13,9 +13,8 @@ from sqlmodel import SQLModel
 from testcontainers.postgres import PostgresContainer
 
 import app.models  # noqa: F401 — register all SA metadata
-from app.database import init_engine
-from app.main import app
 from app.database import get_db
+from app.main import app
 
 
 @pytest.fixture(scope="session")

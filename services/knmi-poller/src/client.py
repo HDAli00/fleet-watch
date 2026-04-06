@@ -39,7 +39,11 @@ def _fetch(api_key: str) -> dict[object, object]:
     )
 
     with httpx.Client(timeout=30.0) as http:
-        resp = http.get(files_url, headers=headers, params={"orderBy": "lastModified", "sorting": "desc"})
+        resp = http.get(
+            files_url,
+            headers=headers,
+            params={"orderBy": "lastModified", "sorting": "desc"},
+        )
         resp.raise_for_status()
         files_payload = resp.json()
 
@@ -61,5 +65,7 @@ def _fetch(api_key: str) -> dict[object, object]:
         data_resp = http.get(download_url)
         data_resp.raise_for_status()
 
-    log.info("knmi.file.downloaded", filename=latest_filename, bytes=len(data_resp.content))
+    log.info(
+        "knmi.file.downloaded", filename=latest_filename, bytes=len(data_resp.content)
+    )
     return data_resp.json()  # type: ignore[no-any-return]

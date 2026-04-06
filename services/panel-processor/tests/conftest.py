@@ -61,7 +61,8 @@ def pg_dsn(postgres_container: PostgresContainer) -> str:
         conn.execute(SCHEMA_SQL)
         # Seed test data
         conn.execute(
-            "INSERT INTO sites (site_id, name, knmi_station) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
+            "INSERT INTO sites (site_id, name, knmi_station)"
+            " VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
             ("site-test-01", "Test Site", "344"),
         )
         conn.execute(
@@ -82,7 +83,9 @@ def kinesis_client() -> Generator[boto3.client, None, None]:  # type: ignore[typ
 
 
 @pytest.fixture
-def secrets_client(pg_dsn: str) -> Generator[boto3.client, None, None]:  # type: ignore[type-arg]
+def secrets_client(  # type: ignore[type-arg]
+    pg_dsn: str,
+) -> Generator[boto3.client, None, None]:
     """Mocked Secrets Manager with DB credentials."""
     with mock_aws():
         client = boto3.client("secretsmanager", region_name="eu-west-1")
@@ -93,7 +96,9 @@ def secrets_client(pg_dsn: str) -> Generator[boto3.client, None, None]:  # type:
         if match:
             user, password, host, port, dbname = match.groups()
         else:
-            user, password, host, port, dbname = "test", "test", "localhost", "5432", "test"
+            user, password, host, port, dbname = (
+                "test", "test", "localhost", "5432", "test"
+            )
 
         client.create_secret(
             Name="test-db-secret",
