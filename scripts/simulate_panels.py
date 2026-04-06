@@ -16,12 +16,18 @@ Press Ctrl+C to stop.
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import math
 import random
 import sys
 import time
 from datetime import datetime, timezone
+
+try:
+    import boto3
+except ImportError:
+    boto3 = None  # type: ignore[assignment]  # optional: only needed when not --dry-run
 
 
 def solar_irradiance(hour: float) -> float:
@@ -75,7 +81,9 @@ def main() -> None:
     args = parser.parse_args()
 
     if not args.dry_run:
-        import boto3
+        if boto3 is None:
+            print("ERROR: boto3 is required for non-dry-run mode. Install it first.", file=sys.stderr)
+            sys.exit(1)
         kinesis = boto3.client("kinesis")
         print(f"Sending to Kinesis stream '{args.stream_name}' every {args.interval}s")
     else:
@@ -98,7 +106,6 @@ def main() -> None:
                 if args.dry_run:
                     print(json.dumps(reading, indent=2))
                 else:
-                    import base64
                     records.append({
                         "Data": json.dumps(reading).encode("utf-8"),
                         "PartitionKey": panel_id,

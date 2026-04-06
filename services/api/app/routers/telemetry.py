@@ -1,6 +1,7 @@
 """GET /telemetry endpoints — time-series panel readings."""
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
@@ -81,14 +82,21 @@ async def get_irradiance_correlation(
     """Return Pearson R² between irradiance (KNMI) and AC output for a site."""
     since = datetime.now(tz=timezone.utc) - _WINDOW_DELTAS[window]
 
-    # Fetch panel readings for site
-    tel_result = await db.execute(
-        select(Telemetry.ts, Telemetry.ac_power_w, Telemetry.irradiance_wm2)
-        .where(Telemetry.site_id == site_id, Telemetry.ts >= since)
-        .order_by(Telemetry.ts)
+    tel_result, obs_result = await asyncio.gather(
+        db.execute(
+            select(Telemetry.ts, Telemetry.ac_power_w, Telemetry.irradiance_wm2)
+            .where(Telemetry.site_id == site_id, Telemetry.ts >= since)
+            .order_by(Telemetry.ts)
+        ),
+        db.execute(
+            select(WeatherObs.station_code)
+            .where(WeatherObs.ts >= since)
+            .order_by(WeatherObs.ts.desc())  # type: ignore[union-attr]
+            .limit(1)
+        ),
     )
-    tel_rows = tel_result.all()
 
+    tel_rows = tel_result.all()
     if len(tel_rows) < 2:
         raise HTTPException(
             status_code=422,
@@ -97,16 +105,8 @@ async def get_irradiance_correlation(
 
     irradiance_vals = [float(r.irradiance_wm2 or 0) for r in tel_rows]
     power_vals = [float(r.ac_power_w) for r in tel_rows]
-
     r2 = pearson_r2(irradiance_vals, power_vals)
 
-    # Get the KNMI station code associated with this site's most recent weather obs
-    obs_result = await db.execute(
-        select(WeatherObs.station_code)
-        .where(WeatherObs.ts >= since)
-        .order_by(WeatherObs.ts.desc())  # type: ignore[union-attr]
-        .limit(1)
-    )
     row = obs_result.first()
     station_code = row[0] if row else "unknown"
 

@@ -11,41 +11,46 @@ import boto3
 import psycopg
 import structlog
 
-from .models import ProcessedReading
+from .models import ProcessedReading, WeatherReading
 
 log = structlog.get_logger()
 
+# Cached at module level so warm Lambda invocations skip Secrets Manager round-trips.
+_cached_dsn: str | None = None
+
 
 def _get_connection_string() -> str:
-    """Resolve DB credentials from Secrets Manager at runtime."""
+    global _cached_dsn
+    if _cached_dsn is not None:
+        return _cached_dsn
     secret_arn = os.environ["DB_SECRET_ARN"]
     client = boto3.client("secretsmanager")
     response = client.get_secret_value(SecretId=secret_arn)
     secret = json.loads(response["SecretString"])
-    return (
+    _cached_dsn = (
         f"host={secret['host']} "
         f"port={secret.get('port', 5432)} "
         f"dbname={secret.get('dbname', 'solar')} "
         f"user={secret['username']} "
         f"password={secret['password']}"
     )
+    return _cached_dsn
 
 
-def get_panel_specs(
+def get_panel_specs_batch(
     conn: psycopg.Connection[psycopg.rows.TupleRow],
-    panel_id: str,
-) -> tuple[float, float] | None:
-    """Fetch (rated_power_w, area_m2) for a panel. Returns None if not found."""
+    panel_ids: list[str],
+) -> dict[str, tuple[float, float]]:
+    """Fetch (rated_power_w, area_m2) for multiple panels in one query."""
+    if not panel_ids:
+        return {}
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT rated_power_w, area_m2 FROM panels WHERE panel_id = %s",
-            (panel_id,),
+            "SELECT panel_id, rated_power_w, area_m2 FROM panels WHERE panel_id = ANY(%s)",
+            (panel_ids,),
         )
-        row = cur.fetchone()
-    if row is None:
-        log.warning("panel.not_found", panel_id=panel_id)
-        return None
-    return float(row[0]), float(row[1])
+        rows = cur.fetchall()
+    return {row[0]: (float(row[1]), float(row[2])) for row in rows}
 
 
 def upsert_telemetry(
@@ -85,6 +90,36 @@ def upsert_telemetry(
                 "expected_ac_power_w": reading.expected_ac_power_w,
                 "anomaly_flag": reading.anomaly_flag,
                 "status": reading.status.value,
+            },
+        )
+    conn.commit()
+
+
+def upsert_weather_obs(
+    conn: psycopg.Connection[psycopg.rows.TupleRow],
+    reading: WeatherReading,
+) -> None:
+    """Upsert a KNMI weather observation into the weather_obs table."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO weather_obs (
+                station_code, ts, temperature_c, wind_speed_ms,
+                solar_rad_wm2, cloud_cover_oktas, precipitation_mm
+            ) VALUES (
+                %(station_code)s, %(ts)s, %(temperature_c)s, %(wind_speed_ms)s,
+                %(solar_rad_wm2)s, %(cloud_cover_oktas)s, %(precipitation_mm)s
+            )
+            ON CONFLICT DO NOTHING
+            """,
+            {
+                "station_code": reading.station_code,
+                "ts": reading.ts,
+                "temperature_c": reading.temperature_c,
+                "wind_speed_ms": reading.wind_speed_ms,
+                "solar_rad_wm2": reading.solar_rad_wm2,
+                "cloud_cover_oktas": reading.cloud_cover_oktas,
+                "precipitation_mm": reading.precipitation_mm,
             },
         )
     conn.commit()

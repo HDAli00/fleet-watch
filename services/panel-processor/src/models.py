@@ -33,6 +33,20 @@ class PanelReading(BaseModel):
     status: PanelStatus
 
 
+class WeatherReading(BaseModel):
+    """KNMI weather observation received from the weather Kinesis stream."""
+
+    model_config = ConfigDict(frozen=True)
+
+    station_code: str  # always string e.g. "344"
+    ts: datetime
+    temperature_c: float
+    wind_speed_ms: float = Field(ge=0)
+    solar_rad_wm2: float = Field(ge=0)
+    cloud_cover_oktas: int = Field(ge=0, le=8)
+    precipitation_mm: float = Field(ge=0)
+
+
 class ProcessedReading(BaseModel):
     """Enriched reading after transform — written to telemetry table."""
 

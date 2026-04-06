@@ -22,21 +22,23 @@ def _get_api_key() -> str:
     return response["SecretString"]
 
 
-def fetch_latest_observations(api_key: str) -> dict[object, object]:
+def fetch_latest_observations(api_key: str | None = None) -> dict[object, object]:
     """Fetch the latest KNMI 10-min observation file and return parsed JSON.
 
-    Steps:
-      1. List available files → get the latest filename
-      2. Get presigned download URL for that file
-      3. Download and parse JSON content
+    If *api_key* is omitted, it is retrieved from Secrets Manager via
+    the ``KNMI_SECRET_ARN`` environment variable.
     """
+    resolved_key = api_key if api_key is not None else _get_api_key()
+    return _fetch(resolved_key)
+
+
+def _fetch(api_key: str) -> dict[object, object]:
     headers = {"Authorization": api_key}
     files_url = (
         f"{KNMI_BASE_URL}/datasets/{DATASET_NAME}/versions/{DATASET_VERSION}/files"
     )
 
     with httpx.Client(timeout=30.0) as http:
-        # Step 1: list files, sorted descending — first is latest
         resp = http.get(files_url, headers=headers, params={"orderBy": "lastModified", "sorting": "desc"})
         resp.raise_for_status()
         files_payload = resp.json()
@@ -48,15 +50,14 @@ def fetch_latest_observations(api_key: str) -> dict[object, object]:
         latest_filename: str = files[0]["filename"]
         log.info("knmi.file.selected", filename=latest_filename)
 
-        # Step 2: get presigned download URL
         url_resp = http.get(
             f"{files_url}/{latest_filename}/url",
             headers=headers,
         )
         url_resp.raise_for_status()
+        # Presigned download URL — no auth header needed
         download_url: str = url_resp.json()["temporaryDownloadUrl"]
 
-        # Step 3: download observation file (presigned — no auth header needed)
         data_resp = http.get(download_url)
         data_resp.raise_for_status()
 

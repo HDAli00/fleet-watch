@@ -8,7 +8,6 @@ import {
   LineChart,
   ResponsiveContainer,
   Scatter,
-  ScatterChart,
   Tooltip,
   XAxis,
   YAxis,

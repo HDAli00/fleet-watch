@@ -36,7 +36,6 @@ def publish_readings(readings: list[WeatherReading], stream_name: str | None = N
     client = boto3.client("kinesis")
     published = 0
 
-    # Batch into chunks of KINESIS_MAX_BATCH
     for i in range(0, len(readings), KINESIS_MAX_BATCH):
         batch = readings[i : i + KINESIS_MAX_BATCH]
         records = [_reading_to_record(r) for r in batch]

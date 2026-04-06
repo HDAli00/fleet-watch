@@ -19,7 +19,7 @@ class TelemetryBase(SQLModel):
     efficiency_pct: float | None = None
     expected_ac_power_w: float | None = None
     anomaly_flag: bool = False
-    status: str
+    status: str  # "ok" | "warning" | "error" | "offline" — Literal unsupported by SQLModel
 
 
 class Telemetry(TelemetryBase, table=True):

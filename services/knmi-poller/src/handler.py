@@ -7,7 +7,7 @@ from typing import Any
 import structlog
 from aws_lambda_powertools import Logger, Tracer
 
-from .client import _get_api_key, fetch_latest_observations
+from .client import fetch_latest_observations
 from .parser import parse_knmi_response
 from .publisher import publish_readings
 
@@ -22,8 +22,7 @@ def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
     """Poll KNMI API and publish observations to Kinesis weather-stream."""
     log.info("knmi.poller.start")
 
-    api_key = _get_api_key()
-    raw = fetch_latest_observations(api_key)
+    raw = fetch_latest_observations()
     readings = parse_knmi_response(raw)
 
     if not readings:
