@@ -15,7 +15,7 @@ from testcontainers.postgres import PostgresContainer
 
 import app.models  # noqa: F401 — register all SA metadata
 from app.database import get_db
-from app.main import app
+from app.main import app as fastapi_app
 
 
 @pytest.fixture(scope="session")
@@ -31,7 +31,7 @@ def postgres_container() -> Generator[PostgresContainer, None, None]:
 
 @pytest.fixture(scope="session")
 def async_db_url(postgres_container: PostgresContainer) -> str:
-    url = postgres_container.get_connection_url()
+    url: str = postgres_container.get_connection_url()
     return url.replace("postgresql+psycopg2://", "postgresql+asyncpg://")
 
 
@@ -58,9 +58,9 @@ async def api_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, No
     async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
         yield db_session
 
-    app.dependency_overrides[get_db] = override_get_db
+    fastapi_app.dependency_overrides[get_db] = override_get_db
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
+        transport=ASGITransport(app=fastapi_app), base_url="http://test"
     ) as client:
         yield client
-    app.dependency_overrides.clear()
+    fastapi_app.dependency_overrides.clear()

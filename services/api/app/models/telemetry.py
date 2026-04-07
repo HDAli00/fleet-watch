@@ -26,7 +26,7 @@ class TelemetryBase(SQLModel):
 
 class Telemetry(TelemetryBase, table=True):
     __tablename__ = "telemetry"
-    __table_args__ = {"postgresql_partition_by": "RANGE (ts)"}  # type: ignore[assignment]
+    __table_args__ = {"postgresql_partition_by": "RANGE (ts)"}
 
     id: int | None = Field(default=None, primary_key=True)
 

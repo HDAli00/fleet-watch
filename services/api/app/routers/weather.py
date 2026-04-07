@@ -7,7 +7,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlmodel import col, select
 
 from app.database import get_db
 from app.models.weather import WeatherObs, WeatherObsRead
@@ -26,6 +26,6 @@ async def get_station_weather(
     result = await db.execute(
         select(WeatherObs)
         .where(WeatherObs.station_code == station_code, WeatherObs.ts >= since)
-        .order_by(WeatherObs.ts)
+        .order_by(col(WeatherObs.ts))
     )
     return list(result.scalars().all())

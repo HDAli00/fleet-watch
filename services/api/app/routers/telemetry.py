@@ -9,7 +9,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlmodel import col, select
 
 from app.config import TelemetryWindow
 from app.database import get_db
@@ -46,7 +46,7 @@ async def get_panel_telemetry(
     result = await db.execute(
         select(Telemetry)
         .where(Telemetry.panel_id == panel_id, Telemetry.ts >= since)
-        .order_by(Telemetry.ts)
+        .order_by(col(Telemetry.ts))
     )
     rows = list(result.scalars().all())
     if not rows:
@@ -67,8 +67,8 @@ async def get_recent_anomalies(
     since = datetime.now(tz=UTC) - _WINDOW_DELTAS[window]
     result = await db.execute(
         select(Telemetry)
-        .where(Telemetry.anomaly_flag.is_(True), Telemetry.ts >= since)  # type: ignore[union-attr]
-        .order_by(Telemetry.ts.desc())  # type: ignore[union-attr]
+        .where(col(Telemetry.anomaly_flag).is_(True), Telemetry.ts >= since)
+        .order_by(col(Telemetry.ts).desc())
         .limit(limit)
     )
     return list(result.scalars().all())
@@ -87,12 +87,12 @@ async def get_irradiance_correlation(
         db.execute(
             select(Telemetry.ts, Telemetry.ac_power_w, Telemetry.irradiance_wm2)
             .where(Telemetry.site_id == site_id, Telemetry.ts >= since)
-            .order_by(Telemetry.ts)
+            .order_by(col(Telemetry.ts))
         ),
         db.execute(
             select(WeatherObs.station_code)
             .where(WeatherObs.ts >= since)
-            .order_by(WeatherObs.ts.desc())  # type: ignore[union-attr]
+            .order_by(col(WeatherObs.ts).desc())
             .limit(1)
         ),
     )
