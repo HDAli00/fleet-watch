@@ -20,7 +20,8 @@ class PanelStatus(StrEnum):
 class PanelReading(BaseModel):
     """Raw IoT telemetry payload received from Kinesis."""
 
-    model_config = ConfigDict(strict=True, frozen=True)
+    # no strict=True — JSON data always arrives as strings from Kinesis
+    model_config = ConfigDict(frozen=True)
 
     panel_id: str
     site_id: str
