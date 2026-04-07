@@ -38,7 +38,7 @@ def _make_kinesis_event(records: list[dict[str, Any]]) -> dict[str, Any]:
                 "kinesis": {
                     "data": base64.b64encode(json.dumps(r).encode()).decode(),
                     "sequenceNumber": f"seq-{i}",
-                    "partitionKey": r["panel_id"],
+                    "partitionKey": r.get("panel_id", "unknown"),
                     "approximateArrivalTimestamp": 1000.0,
                     "kinesisSchemaVersion": "1.0",
                 },
