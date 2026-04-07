@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from sqlalchemy import Column
+from sqlalchemy import DateTime as SADateTime
 from sqlmodel import Field, SQLModel
 
 
@@ -26,8 +28,13 @@ class TelemetryBase(SQLModel):
 
 class Telemetry(TelemetryBase, table=True):
     __tablename__ = "telemetry"
-    __table_args__ = {"postgresql_partition_by": "RANGE (ts)"}
+    # No postgresql_partition_by here — partitioning is handled by Alembic
+    # raw DDL in production; SQLModel.metadata.create_all (used in tests)
+    # creates a plain table which avoids the "PK must include partition key" error.
 
+    ts: datetime = Field(
+        sa_column=Column("ts", SADateTime(timezone=True), nullable=False)
+    )
     id: int | None = Field(default=None, primary_key=True)
 
 
