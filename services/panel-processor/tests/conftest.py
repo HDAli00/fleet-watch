@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Generator
 from typing import Any
 
@@ -11,6 +12,20 @@ import psycopg
 import pytest
 from moto import mock_aws
 from testcontainers.postgres import PostgresContainer
+
+
+@pytest.fixture(scope="session", autouse=True)
+def disable_xray() -> None:
+    """Globally disable the X-Ray SDK before any handler import.
+
+    capture_lambda_handler calls provider.in_subsegment() which requires an
+    active X-Ray segment. No Lambda daemon runs in CI, so we must set
+    POWERTOOLS_TRACE_DISABLED before the handler module is first imported.
+    Tracer.__init__ then calls aws_xray_sdk.global_sdk_config.set_sdk_enabled(False),
+    making in_subsegment() a no-op for the entire test session.
+    """
+    os.environ.setdefault("POWERTOOLS_TRACE_DISABLED", "true")
+
 
 # Minimal schema needed for Lambda integration tests
 SCHEMA_SQL = """
