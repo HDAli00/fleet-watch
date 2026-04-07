@@ -5,11 +5,31 @@ from __future__ import annotations
 import base64
 import json
 import os
+from dataclasses import dataclass
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import psycopg
 import pytest
+
+
+@dataclass
+class _LambdaContext:
+    """Minimal Lambda context with the attributes Logger.inject_lambda_context reads."""
+
+    function_name: str = "solar-panel-processor"
+    function_version: str = "$LATEST"
+    invoked_function_arn: str = (
+        "arn:aws:lambda:eu-west-1:123456789012:function:solar-panel-processor"
+    )
+    memory_limit_in_mb: int = 256
+    aws_request_id: str = "test-request-id-001"
+    log_group_name: str = "/aws/lambda/solar-panel-processor"
+    log_stream_name: str = "2026/04/07/[$LATEST]test"
+    remaining_time_in_millis: int = 30_000
+
+
+LAMBDA_CONTEXT = _LambdaContext()
 
 SAMPLE_READING: dict[str, Any] = {
     "panel_id": "panel-NL-001",
@@ -75,7 +95,7 @@ def test_handler_processes_valid_record(pg_dsn: str) -> None:
     ):
         from src.handler import handler
 
-        result = handler(event, MagicMock())
+        result = handler(event, LAMBDA_CONTEXT)
 
     assert result["processed"] == 1
     assert result["failed"] == 0
@@ -108,7 +128,7 @@ def test_handler_sets_anomaly_flag(pg_dsn: str) -> None:
     ):
         from src.handler import handler
 
-        result = handler(event, MagicMock())
+        result = handler(event, LAMBDA_CONTEXT)
 
     assert result["processed"] == 1
 
@@ -141,7 +161,7 @@ def test_handler_skips_invalid_record(pg_dsn: str) -> None:
     ):
         from src.handler import handler
 
-        result = handler(event, MagicMock())
+        result = handler(event, LAMBDA_CONTEXT)
 
     assert result["failed"] == 1
     assert result["processed"] == 1
