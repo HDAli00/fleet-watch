@@ -6,7 +6,7 @@ import base64
 import json
 import os
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import psycopg
 import pytest
@@ -75,7 +75,7 @@ def test_handler_processes_valid_record(pg_dsn: str) -> None:
     ):
         from src.handler import handler
 
-        result = handler(event, object())
+        result = handler(event, MagicMock())
 
     assert result["processed"] == 1
     assert result["failed"] == 0
@@ -108,7 +108,7 @@ def test_handler_sets_anomaly_flag(pg_dsn: str) -> None:
     ):
         from src.handler import handler
 
-        result = handler(event, object())
+        result = handler(event, MagicMock())
 
     assert result["processed"] == 1
 
@@ -141,7 +141,7 @@ def test_handler_skips_invalid_record(pg_dsn: str) -> None:
     ):
         from src.handler import handler
 
-        result = handler(event, object())
+        result = handler(event, MagicMock())
 
     assert result["failed"] == 1
     assert result["processed"] == 1
