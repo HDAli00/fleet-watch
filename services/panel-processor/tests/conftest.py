@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 from collections.abc import Generator
 from typing import Any
 
@@ -12,18 +11,6 @@ import psycopg
 import pytest
 from moto import mock_aws
 from testcontainers.postgres import PostgresContainer
-
-
-@pytest.fixture(scope="session", autouse=True)
-def disable_powertools_tracing() -> None:
-    """Disable Lambda Powertools X-Ray tracing for tests.
-
-    Tracer() patches aws_xray_sdk at import time; the SDK is not installed
-    in the test environment. Setting this env var switches Tracer to a no-op
-    provider before handler.py is first imported.
-    """
-    os.environ.setdefault("POWERTOOLS_TRACE_DISABLED", "true")
-
 
 # Minimal schema needed for Lambda integration tests
 SCHEMA_SQL = """
