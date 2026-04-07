@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Generator
+from typing import Any
 
 import boto3
 import psycopg
@@ -76,7 +77,7 @@ def pg_dsn(postgres_container: PostgresContainer) -> str:
 
 
 @pytest.fixture
-def kinesis_client() -> Generator[boto3.client, None, None]:  # type: ignore[type-arg]
+def kinesis_client() -> Generator[Any, None, None]:
     with mock_aws():
         client = boto3.client("kinesis", region_name="eu-west-1")
         client.create_stream(StreamName="solar-panels-stream", ShardCount=1)
@@ -84,9 +85,9 @@ def kinesis_client() -> Generator[boto3.client, None, None]:  # type: ignore[typ
 
 
 @pytest.fixture
-def secrets_client(  # type: ignore[type-arg]
+def secrets_client(
     pg_dsn: str,
-) -> Generator[boto3.client, None, None]:
+) -> Generator[Any, None, None]:
     """Mocked Secrets Manager with DB credentials."""
     with mock_aws():
         client = boto3.client("secretsmanager", region_name="eu-west-1")

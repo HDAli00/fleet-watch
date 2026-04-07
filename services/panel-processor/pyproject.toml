@@ -43,6 +43,10 @@ line_length = 88
 python_version = "3.11"
 strict = true
 
+[[tool.mypy.overrides]]
+module = ["testcontainers.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--cov=src --cov-report=term-missing"
