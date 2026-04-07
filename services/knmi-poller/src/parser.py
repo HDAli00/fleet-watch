@@ -7,6 +7,7 @@ Only extracts stations we care about (defined in KNMI_STATIONS).
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 
 import structlog
 from pydantic import ValidationError
@@ -45,7 +46,7 @@ def _safe_int(value: object, default: int = 0) -> int:
         return default
 
 
-def parse_knmi_response(raw: dict[object, object]) -> list[WeatherReading]:
+def parse_knmi_response(raw: dict[str, Any]) -> list[WeatherReading]:
     """Extract WeatherReading records for our target stations.
 
     KNMI JSON structure:

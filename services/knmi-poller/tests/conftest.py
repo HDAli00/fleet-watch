@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from typing import Any
 
 import boto3
 import pytest
@@ -16,14 +17,14 @@ def aws_mocks() -> Generator[None, None, None]:
 
 
 @pytest.fixture
-def kinesis_client(aws_mocks: None) -> boto3.client:  # type: ignore[type-arg]
+def kinesis_client(aws_mocks: None) -> Any:
     client = boto3.client("kinesis", region_name="eu-west-1")
     client.create_stream(StreamName="solar-weather-stream", ShardCount=1)
     return client
 
 
 @pytest.fixture
-def secrets_client(aws_mocks: None) -> boto3.client:  # type: ignore[type-arg]
+def secrets_client(aws_mocks: None) -> Any:
     client = boto3.client("secretsmanager", region_name="eu-west-1")
     client.create_secret(
         Name="iot-platform/knmi-api-key",

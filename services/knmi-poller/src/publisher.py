@@ -43,7 +43,7 @@ def publish_readings(
         batch = readings[i : i + KINESIS_MAX_BATCH]
         records = [_reading_to_record(r) for r in batch]
 
-        response = client.put_records(StreamName=target_stream, Records=records)
+        response = client.put_records(StreamName=target_stream, Records=records)  # type: ignore[arg-type]
         failed = response.get("FailedRecordCount", 0)
         batch_published = len(batch) - failed
         published += batch_published

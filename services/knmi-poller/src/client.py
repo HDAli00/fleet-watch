@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from typing import Any
 
 import boto3
 import httpx
@@ -23,7 +24,7 @@ def _get_api_key() -> str:
     return response["SecretString"]
 
 
-def fetch_latest_observations(api_key: str | None = None) -> dict[object, object]:
+def fetch_latest_observations(api_key: str | None = None) -> dict[str, Any]:
     """Fetch the latest KNMI 10-min observation file and return parsed JSON.
 
     If *api_key* is omitted, it is retrieved from Secrets Manager via
@@ -33,7 +34,7 @@ def fetch_latest_observations(api_key: str | None = None) -> dict[object, object
     return _fetch(resolved_key)
 
 
-def _fetch(api_key: str) -> dict[object, object]:
+def _fetch(api_key: str) -> dict[str, Any]:
     headers = {"Authorization": api_key}
     files_url = (
         f"{KNMI_BASE_URL}/datasets/{DATASET_NAME}/versions/{DATASET_VERSION}/files"
