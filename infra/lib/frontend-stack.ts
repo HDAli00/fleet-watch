@@ -99,5 +99,10 @@ export class FrontendStack extends cdk.Stack {
       value: siteBucket.bucketName,
       exportName: `${this.stackName}-SiteBucketName`,
     });
+
+    new cdk.CfnOutput(this, "DistributionId", {
+      value: distribution.distributionId,
+      exportName: `${this.stackName}-DistributionId`,
+    });
   }
 }

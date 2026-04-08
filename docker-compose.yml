@@ -1,0 +1,55 @@
+services:
+  # ── PostgreSQL ────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: solar
+      POSTGRES_PASSWORD: solar
+      POSTGRES_DB: solar
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U solar -d solar"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── FastAPI (solar-api) ───────────────────────────────────────────────────
+  api:
+    build:
+      context: services/api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://solar:solar@postgres:5432/solar
+      AWS_REGION: eu-west-1
+      LOG_LEVEL: DEBUG
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── React / Vite dev server ───────────────────────────────────────────────
+  # Optional: run `npm run dev` locally instead for hot-reload (see README)
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      # Proxy target — points to the api service inside Docker network
+      VITE_API_TARGET: http://api:8000
+    volumes:
+      - ./frontend/src:/app/src:ro
+      - ./frontend/public:/app/public:ro
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:

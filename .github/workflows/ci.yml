@@ -1,14 +1,18 @@
-name: CI
+name: CI / CD
+
 on:
   push:
-    branches: [main, "claude/*"]
+    branches: [main, "claude/*", "feat/*", "imp/*", "fix/*"]
   pull_request:
     branches: [main]
 
 jobs:
+  # ── Python lint + type-check + test (per service) ─────────────────────────
   python:
+    name: Python — ${{ matrix.service }}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         service: [api, panel-processor, knmi-poller]
     steps:
@@ -34,7 +38,9 @@ jobs:
         run: uv run pytest
         working-directory: services/${{ matrix.service }}
 
+  # ── CDK type-check + synth ────────────────────────────────────────────────
   cdk:
+    name: CDK synth
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -47,3 +53,115 @@ jobs:
       - name: Build + synth
         run: npm run build && npx cdk synth
         working-directory: infra
+
+  # ── Frontend type-check + build ───────────────────────────────────────────
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install deps
+        run: npm ci
+        working-directory: frontend
+      - name: Type check
+        run: npm run typecheck
+        working-directory: frontend
+      - name: Build
+        run: npm run build
+        working-directory: frontend
+
+  # ── Deploy to AWS (main branch only, after all CI jobs pass) ──────────────
+  #
+  # Required GitHub secrets:
+  #   AWS_ACCESS_KEY_ID      — IAM user / role access key
+  #   AWS_SECRET_ACCESS_KEY  — IAM user / role secret
+  #
+  # Required GitHub variables (Settings → Variables):
+  #   AWS_REGION             — target region, e.g. eu-west-1
+  #
+  # The IAM principal needs these permissions:
+  #   - sts:AssumeRole (CDK bootstrap role)
+  #   - CloudFormation, ECR, ECS, Lambda, S3, CloudFront, IAM, etc.
+  #   Attach the AWS-managed AdministratorAccess policy to the deploy user
+  #   for simplicity, or create a least-privilege policy for production.
+  #
+  # One-time prerequisite (run locally before first deploy):
+  #   cd infra && npx cdk bootstrap
+  #   aws secretsmanager create-secret \
+  #     --name iot-platform/knmi-api-key \
+  #     --secret-string "YOUR_KNMI_KEY"
+  # ─────────────────────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to AWS
+    runs-on: ubuntu-latest
+    needs: [python, cdk, frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'eu-west-1' }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install CDK deps
+        run: npm install
+        working-directory: infra
+
+      - name: CDK deploy — all stacks
+        run: |
+          npm run build
+          npx cdk deploy --all \
+            --require-approval never \
+            --ci \
+            --outputs-file ../cdk-outputs.json
+        working-directory: infra
+
+      - name: Read CDK outputs
+        id: outputs
+        run: |
+          API_URL=$(jq -r '."IoT-ComputeStack".ApiUrl // empty' cdk-outputs.json)
+          BUCKET=$(jq -r '."IoT-FrontendStack".SiteBucketName // empty' cdk-outputs.json)
+          DIST_ID=$(jq -r '."IoT-FrontendStack".DistributionId // empty' cdk-outputs.json)
+          echo "api_url=$API_URL"   >> "$GITHUB_OUTPUT"
+          echo "bucket=$BUCKET"     >> "$GITHUB_OUTPUT"
+          echo "dist_id=$DIST_ID"   >> "$GITHUB_OUTPUT"
+
+      - name: Build frontend
+        run: npm ci && npm run build
+        working-directory: frontend
+        env:
+          # Injected at build time so the SPA knows the ALB endpoint
+          VITE_API_URL: ${{ steps.outputs.outputs.api_url }}
+
+      - name: Sync frontend to S3
+        run: |
+          BUCKET="${{ steps.outputs.outputs.bucket }}"
+          # Long-lived assets (hashed filenames) — immutable cache
+          aws s3 sync frontend/dist "s3://$BUCKET" \
+            --delete \
+            --exclude "index.html" \
+            --cache-control "public,max-age=31536000,immutable"
+          # index.html — always revalidate
+          aws s3 cp frontend/dist/index.html "s3://$BUCKET/index.html" \
+            --cache-control "no-cache,no-store,must-revalidate"
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ steps.outputs.outputs.dist_id }}" \
+            --paths "/*"
