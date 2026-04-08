@@ -304,13 +304,20 @@ chore(deps): bump aws-cdk-lib to 2.140.0
 
 ## CI / CD Pipeline
 
+Two separate workflow files keep concerns cleanly separated:
+
+| File | Trigger | Purpose |
+|---|---|---|
+| `.github/workflows/ci.yml` | Every push + PRs | Lint, type-check, test, build |
+| `.github/workflows/cd.yml` | CI passes on `main` | Deploy to AWS |
+
 ### CI — what runs and when
 
-CI runs on every push to `main`, `feat/*`, `imp/*`, `fix/*`, `claude/*`, and on every pull request targeting `main`.
+Runs on every push to `main`, `feat/*`, `imp/*`, `fix/*`, `claude/*`, and on every pull request targeting `main`.
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│  CI (all branches + PRs)                                         │
+│  ci.yml (all branches + PRs)                                     │
 │                                                                  │
 │  python (×3)          cdk             frontend                   │
 │  ├─ ruff              ├─ tsc          ├─ tsc --noEmit            │
@@ -323,7 +330,7 @@ CI runs on every push to `main`, `feat/*`, `imp/*`, `fix/*`, `claude/*`, and on 
 
 ### CD — AWS deployment
 
-The `deploy` job runs **only on push to `main`**, and only after all CI jobs pass. It:
+`cd.yml` is triggered by `workflow_run` — it starts only when CI completes **successfully** on `main`, so a broken CI always blocks deployment. It:
 
 1. Configures AWS credentials from GitHub secrets
 2. Runs `cdk deploy --all` (builds & pushes the ECS Docker image to ECR, updates all Lambda code, provisions/updates all CloudFormation stacks)
@@ -335,9 +342,9 @@ The `deploy` job runs **only on push to `main`**, and only after all CI jobs pas
 ```
 push to main
      │
-     ▼ (CI passes)
+     ▼ ci.yml passes
 ┌─────────────────────────────────────────────────────────────────┐
-│  deploy job                                                     │
+│  cd.yml — deploy job                                            │
 │                                                                 │
 │  configure-aws-credentials                                      │
 │       │                                                         │
