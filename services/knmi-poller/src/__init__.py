@@ -1,1 +1,0 @@
-# knmi-poller Lambda package

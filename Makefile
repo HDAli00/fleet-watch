@@ -1,53 +1,65 @@
-.PHONY: setup lint typecheck test test-api test-lambdas synth deploy destroy
+SHELL := /bin/bash
+.DEFAULT_GOAL := help
 
-SERVICES := services/api services/panel-processor services/knmi-poller
+ROOT := $(abspath $(CURDIR))
+COMPOSE := docker compose -f app/docker-compose.yml --project-directory app
+API_DIR := app/api
+WEB_DIR := app/web
 
-# ── Setup ────────────────────────────────────────────────────────────────────
-setup:
-	uv tool install pre-commit
-	@for s in $(SERVICES); do \
-		echo "==> uv sync $$s"; \
-		cd $$s && uv sync && cd ../..; \
-	done
-	@if [ -f infra/package.json ]; then cd infra && npm install && cd ..; fi
-	@if [ -f frontend/package.json ]; then cd frontend && npm install && cd ..; fi
-	pre-commit install
+.PHONY: help setup lint typecheck test prebuild build up down logs migrate smoke check verify clean
 
-# ── Lint ─────────────────────────────────────────────────────────────────────
-lint:
-	@for s in $(SERVICES); do \
-		echo "==> lint $$s"; \
-		cd $$s && uv run ruff check . && uv run black --check . && uv run isort --check . && cd ../..; \
-	done
+help: ## List available targets
+	@awk 'BEGIN{FS=":.*##"} /^[a-zA-Z_-]+:.*##/ {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-# ── Type check ───────────────────────────────────────────────────────────────
-typecheck:
-	@for s in $(SERVICES); do \
-		echo "==> mypy $$s"; \
-		cd $$s && uv run mypy --strict . && cd ../..; \
-	done
-	@if [ -f infra/package.json ]; then cd infra && npm run build && cd ..; fi
+prebuild: ## Stage host CA bundle for docker build (TLS-intercepting envs)
+	@if [ -f /etc/ssl/certs/ca-certificates.crt ]; then \
+	  cp /etc/ssl/certs/ca-certificates.crt docker/ca-bundle.crt; \
+	else \
+	  : > docker/ca-bundle.crt; \
+	fi
 
-# ── Tests ────────────────────────────────────────────────────────────────────
-test:
-	@for s in $(SERVICES); do \
-		echo "==> pytest $$s"; \
-		cd $$s && uv run pytest && cd ../..; \
-	done
+setup: ## Install api + web dev deps
+	cd $(API_DIR) && uv sync --all-extras
+	cd $(WEB_DIR) && npm install
 
-test-api:
-	cd services/api && uv run pytest -v
+lint: ## Lint api + web
+	cd $(API_DIR) && uv run ruff check app tests
+	cd $(WEB_DIR) && npm run lint
 
-test-lambdas:
-	cd services/panel-processor && uv run pytest -v
-	cd services/knmi-poller && uv run pytest -v
+typecheck: ## mypy --strict + tsc --noEmit
+	cd $(API_DIR) && uv run mypy app
+	cd $(WEB_DIR) && npm run typecheck
 
-# ── CDK ──────────────────────────────────────────────────────────────────────
-synth:
-	cd infra && npm run build && npx cdk synth
+test: ## Run pytest + vitest
+	cd $(API_DIR) && uv run pytest -q
+	cd $(WEB_DIR) && npm test -- --run
 
-deploy:
-	cd infra && npm run build && npx cdk deploy --all
+build: prebuild ## Build docker images
+	$(COMPOSE) build
 
-destroy:
-	cd infra && npx cdk destroy --all
+up: prebuild ## Bring the stack up (http://localhost:8080)
+	$(COMPOSE) up -d --build
+	@echo "==> waiting for services to become healthy..."
+	@bash scripts/wait-healthy.sh || ($(COMPOSE) ps; $(COMPOSE) logs --tail=120; exit 1)
+	@echo "==> stack up at http://localhost:8080"
+
+down: ## Tear down the stack and prune volumes
+	$(COMPOSE) down -v --remove-orphans
+
+logs: ## Tail compose logs
+	$(COMPOSE) logs -f --tail=200
+
+migrate: ## Run alembic migrations inside the api container
+	$(COMPOSE) exec -T api alembic upgrade head
+
+smoke: ## Curl health + SSE + ingest a sample reading
+	@bash scripts/smoke.sh
+
+check: lint typecheck test build ## Everything CI would run (no runtime)
+
+verify: check up migrate smoke ## Full local end-to-end gate
+	@$(MAKE) down
+	@echo "==> verify OK"
+
+clean: ## Remove build artifacts (keeps node_modules / .venv)
+	rm -rf $(WEB_DIR)/dist $(API_DIR)/.pytest_cache $(API_DIR)/.mypy_cache $(API_DIR)/.ruff_cache

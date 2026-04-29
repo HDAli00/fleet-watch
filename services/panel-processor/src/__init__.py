@@ -1,1 +1,0 @@
-# panel-processor Lambda package
