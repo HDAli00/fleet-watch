@@ -1,0 +1,14 @@
+{
+  "vehicle_id": "v-test-0001",
+  "ts": "2026-04-28T00:00:00Z",
+  "rpm": 2200,
+  "speed_kph": 80.0,
+  "coolant_c": 92.0,
+  "oil_psi": 42.0,
+  "battery_v": 13.8,
+  "throttle_pct": 35.0,
+  "fuel_pct": 62.0,
+  "lat": 52.37,
+  "lon": 4.9,
+  "heading_deg": 120.0
+}
